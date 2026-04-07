@@ -1,20 +1,95 @@
-﻿// Lab02.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+﻿#include <iostream>
+#include <windows.h>
+#include <vector>
+#include <cstring>
+#include <iomanip>
+using namespace std;
 
-#include <iostream>
-
-int main()
+#pragma pack(push, 1)
+struct fat_32
 {
-    std::cout << "Hello World!\n";
+	unsigned int		tableSize_32;
+	unsigned short		flags;
+	unsigned short		version;
+	unsigned int		rootCluster;
+	unsigned short		fatInfo;
+	unsigned short		backupBootSector;
+	unsigned char 		reserved[12];
+	unsigned char		driveNumber;
+	unsigned char 		reserved1;
+	unsigned char		bootSignature;
+	unsigned int 		volumeId;
+	unsigned char		volumeLabel[11];
+	unsigned char		fatTypeLabel[8];
+
+};
+
+struct bootSector
+{
+	unsigned char 		jump[3];
+	unsigned char 		oem[8];
+	unsigned short		bytesPerSector; //Bytes per sector
+	unsigned char		sectorsPerCluster; // Sector per cluster
+	unsigned short		reservedSectorNum; // Number of sectors in the Boot Sector region
+	unsigned char		numOfFATTable; // Number of FAT tables
+	unsigned short		numOfRootEntry; //Number of sectors for the RDET
+	unsigned short		totalSectors16;
+	unsigned char		mediaType;
+	unsigned short		tableSize16;
+	unsigned short		sectorsPerTrack;
+	unsigned short		numOfHead;
+	unsigned int 		hiddenSector;
+	unsigned int 		totalSectors32;
+	
+	fat_32		FAT32;
+	
+};
+#pragma pack(pop)
+
+bootSector readBootSector(const char* path){
+     //Truy cập usb
+    HANDLE disk = CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+    if(disk == INVALID_HANDLE_VALUE){
+        cout << "Cannot open drive";
+    } 
+
+    //Vùng nhớ để lưu các byte được đọc từ usb
+    vector<BYTE> buffer(512);
+
+    //Số byte đã đọc
+    DWORD numOfBytesRead;
+
+    // Đọc 512 byte đầu tiên của usb
+    ReadFile(disk, buffer.data(), 512, &numOfBytesRead, NULL);
+    CloseHandle(disk);
+
+    //Chép 512 byte đã đọc từ usb sang struct
+    bootSector bs;
+    memcpy(&bs, buffer.data(), sizeof(bootSector));
+
+    return bs;
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
+void printBootSectorInfo(bootSector bs){
+    cout << "\n-------------------------------------------------------\n";
+    cout << "|             Boot Sector Information                   |\n";
+    cout << "------------------------------------+------------------\n";
+    cout << left;
+    cout << "| " << setw(35) << "Bytes per sector" << "| " << setw(15) << bs.bytesPerSector << "(bytes)|" << endl;
+    cout << "| " << setw(35) << "Sectors per cluster" << "| " << setw(15) << (int)bs.sectorsPerCluster << " |" << endl;
+    cout << "| " << setw(35) << "Number of sectors in the Boot Sector region" << "| " << setw(15) << bs.reservedSectorNum << " |" << endl;
+    cout << "| " << setw(35) << "Number of FAT tables" << "| " << setw(15) << (int)bs.numOfFATTable << " |" << endl;
+    cout << "| " << setw(35) << "Number of sectors per FAT table" << "| " << setw(15) << bs.FAT32.tableSize_32 << " |" << endl;
+    cout << "| " << setw(35) << "Number of sectors for the RDET" << "| " << setw(15) << (bs.numOfRootEntry*32)/bs.bytesPerSector << " |" << endl;
+    cout << "| " << setw(35) << "Total number of sectors on the disk" << "| " << setw(15) << bs.totalSectors32 << " |" << endl;
+     cout << "-------------------------------------------------------\n";
+}
 
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
+int main(){
+   //Boot sector info
+   bootSector bsector = readBootSector("\\\\.\\E:");
+   printBootSectorInfo(bsector);
+    
+    return 0;
+}
