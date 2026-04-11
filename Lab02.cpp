@@ -203,12 +203,9 @@ string fileContent(HANDLE usb, const bootSector& bs, const ENTRY& file) {
     DWORD dataSection = (bs.reservedSectorNum + bs.numOfFATTable * bs.FAT32.tableSize_32) * bs.bytesPerSector;
     DWORD firstCluster = (file.startCluster - 2) * bs.sectorsPerCluster * bs.bytesPerSector;
     // Cluster bắt đầu của file
-    long long startByte = (long long)dataSection + (long long)firstCluster;///
-
-    LARGE_INTEGER large;///
-    large.QuadPart = startByte;///
-
-    SetFilePointerEx(usb, large, NULL, FILE_BEGIN);///
+    
+    DWORD startByte = dataSection + firstCluster;
+    SetFilePointer(usb, startByte, NULL, FILE_BEGIN);
 
     // Bắt đầu ở sector đầu tiên
     BYTE buffer[512];
