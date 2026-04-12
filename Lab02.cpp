@@ -37,7 +37,7 @@ void printBootSectorInfo(sf::RenderWindow& window, sf::Font& font, bootSector bs
     stringstream ss;
     ss << "\n--------------------------------------------------------\n";
     ss << "|               Boot Sector Information                |\n";
-    ss << "------------------------------------+-------------------\n";
+    ss << "--------------------------------------------------------\n";
     ss << left;
     ss << "| " << setw(35) << "Bytes per sector" << "| " << setw(9) << bs.bytesPerSector << "(bytes)|" << endl;
     ss << "| " << setw(35) << "Sectors per cluster" << "| " << setw(15) << (int)bs.sectorsPerCluster << " |" << endl;
@@ -380,7 +380,7 @@ void CPUScheduling(sf::RenderWindow& window, sf::Font& font, HANDLE usb, const b
                 //Vẽ khối chữ nhật
                 sf::RectangleShape rect({width - 2.f, blockHeight});
                 rect.setPosition({x + 1.f, row});
-                rect.setFillColor(sf::Color(70, 130, 180));
+                rect.setFillColor(sf::Color::Blue);
                 rect.setOutlineColor(sf::Color::White);
                 rect.setOutlineThickness(1.f);
                 window.draw(rect);
@@ -394,7 +394,7 @@ void CPUScheduling(sf::RenderWindow& window, sf::Font& font, HANDLE usb, const b
                 //Vẽ mốc thời gian chạy và kết thúc của khối
                 sf::Text tStart(font, to_string(gantt[z].start), 11);
                 tStart.setPosition({x, row + blockHeight + 4.f});
-                tStart.setFillColor(sf::Color(200, 200, 200));
+                tStart.setFillColor(sf::Color::White);
                 window.draw(tStart);
             }
 
