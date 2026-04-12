@@ -11,6 +11,14 @@
 
 using namespace std;
 
+struct ENTRY {
+	string name, fullName;
+	UINT32 startCluster;
+	string dateCreated;
+	string timeCreated;
+	UINT32 fileSize;
+};
+
 #pragma pack(push, 1)
 struct fat_32
 {
@@ -54,6 +62,10 @@ struct bootSector
 
 bootSector readBootSector(const char* path);
 void printBootSectorInfo(bootSector bs);
+vector<ENTRY> searchFiles(HANDLE usb, const bootSector& bs, UINT32 startCluster);
+string fileContent(HANDLE usb, const bootSector& bs, const ENTRY& file);
+void readFileContent(string file);
+void fileInfo(HANDLE usb, const bootSector& bs, const ENTRY& file);
 void consoleWindow();
 int handleChoice(sf::RenderWindow& window, sf::Font& font, const vector<string>& choices);
 void CPUScheduling(sf::RenderWindow& window, sf::Font& font, const string& path);
