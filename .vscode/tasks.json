@@ -7,13 +7,13 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "${fileDirname}\\*.cpp",
+               "${workspaceFolder}/*.cpp",
                 "-I",
-                "D:/SFML/SFML-3.0.2/include",
+               "${workspaceFolder}/sfml/include",
                 "-L",
-                "D:/SFML/SFML-3.0.2/lib",
+               "${workspaceFolder}/sfml/lib",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+              "${workspaceFolder}/main.exe",
                 "-lsfml-graphics",
                 "-lsfml-window",
                 "-lsfml-system"
