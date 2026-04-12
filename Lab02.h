@@ -61,11 +61,13 @@ struct bootSector
 #pragma pack(pop)
 
 bootSector readBootSector(const char* path);
-void printBootSectorInfo(bootSector bs);
+void printBootSectorInfo(sf::RenderWindow& window, sf::Font& font, bootSector bs);
 vector<ENTRY> searchFiles(HANDLE usb, const bootSector& bs, UINT32 startCluster);
 string fileContent(HANDLE usb, const bootSector& bs, const ENTRY& file);
-void readFileContent(string file);
+void readFileContent(string file, vector<Queue>& queues, vector<Process>& processes);
 void fileInfo(HANDLE usb, const bootSector& bs, const ENTRY& file);
 void consoleWindow();
 int handleChoice(sf::RenderWindow& window, sf::Font& font, const vector<string>& choices);
-void CPUScheduling(sf::RenderWindow& window, sf::Font& font, const string& path);
+void CPUScheduling(sf::RenderWindow& window, sf::Font& font, HANDLE usb, const bootSector& bs, const ENTRY& file);
+void printProcessTable(vector<Queue>& queues, vector<Process>& processes);
+void printProcessStatistic(sf::RenderWindow& window, sf::Font& font, const vector<Process>& processes);

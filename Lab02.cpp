@@ -1,4 +1,4 @@
-#include "Lab02.h"
+﻿#include "Lab02.h"
 
 void consoleWindow() {
 	HWND consoleWindow = GetConsoleWindow();
@@ -33,20 +33,42 @@ bootSector readBootSector(const char* path){
     return bs;
 }
 
-void printBootSectorInfo(bootSector bs){
-    cout << "\n-------------------------------------------------------\n";
-    cout << "|             Boot Sector Information                   |\n";
-    cout << "-------------------------------------------------------\n";
-    cout << left;
-    cout << "| " << setw(35) << "Bytes per sector" << "| " << setw(15) << bs.bytesPerSector << "(bytes)|" << endl;
-    cout << "| " << setw(35) << "Sectors per cluster" << "| " << setw(15) << (int)bs.sectorsPerCluster << " |" << endl;
-    cout << "| " << setw(35) << "Number of sectors in the Boot Sector region" << "| " << setw(15) << bs.reservedSectorNum << " |" << endl;
-    cout << "| " << setw(35) << "Number of FAT tables" << "| " << setw(15) << (int)bs.numOfFATTable << " |" << endl;
-    cout << "| " << setw(35) << "Number of sectors per FAT table" << "| " << setw(15) << bs.FAT32.tableSize_32 << " |" << endl;
-    int rdetSectors = (bs.bytesPerSector != 0) ? (bs.numOfRootEntry * 32) / bs.bytesPerSector : 0;
-    cout << "| " << setw(35) << "Number of sectors for the RDET" << "| " << setw(15) << rdetSectors << " |" << endl;
-    cout << "| " << setw(35) << "Total number of sectors on the disk" << "| " << setw(15) << bs.totalSectors32 << " |" << endl;
-    cout << "-------------------------------------------------------\n";
+void printBootSectorInfo(sf::RenderWindow& window, sf::Font& font, bootSector bs) {
+    stringstream ss;
+    ss << "\n--------------------------------------------------------\n";
+    ss << "|               Boot Sector Information                |\n";
+    ss << "------------------------------------+-------------------\n";
+    ss << left;
+    ss << "| " << setw(35) << "Bytes per sector" << "| " << setw(9) << bs.bytesPerSector << "(bytes)|" << endl;
+    ss << "| " << setw(35) << "Sectors per cluster" << "| " << setw(15) << (int)bs.sectorsPerCluster << " |" << endl;
+    ss << "| " << setw(35) << "Number of sectors in the Boot Sector region" << "| " << setw(7) << bs.reservedSectorNum << " |" << endl;
+    ss << "| " << setw(35) << "Number of FAT tables" << "| " << setw(15) << (int)bs.numOfFATTable << " |" << endl;
+    ss << "| " << setw(35) << "Number of sectors per FAT table" << "| " << setw(15) << bs.FAT32.tableSize_32 << " |" << endl;
+    ss << "| " << setw(35) << "Number of sectors for the RDET" << "| " << setw(15) << (bs.numOfRootEntry * 32) / bs.bytesPerSector << " |" << endl;
+    ss << "| " << setw(35) << "Total number of sectors on the disk" << "| " << setw(15) << bs.totalSectors32 << " |" << endl;
+    ss << "--------------------------------------------------------\n";
+    ss << "Press Enter or Esc to exit\n";
+
+    sf::Text text(font, ss.str(), 18);
+    text.setPosition({30.f, 30.f});
+
+    while (window.isOpen()) {
+        while (const auto event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
+                window.close();
+                return;
+            }
+            if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+                if (key->code == sf::Keyboard::Key::Escape || key->code == sf::Keyboard::Key::Enter) {
+                    return; 
+                }
+            }
+        }
+
+        window.clear(sf::Color::Black);
+        window.draw(text);
+        window.display();
+    }
 }
 
 vector<ENTRY> searchFiles(HANDLE usb, const bootSector& bs, UINT32 startCluster) {
@@ -153,27 +175,27 @@ string fileContent(HANDLE usb, const bootSector& bs, const ENTRY& file) {
     return string((char*)buffer, file.fileSize);
 }
 
-void readFileContent(string file) {
+void readFileContent(string file, vector<Queue>& queues, vector<Process>& processes) {
     stringstream ss(file);
     int queueAmount;
 
     ss >> queueAmount;
 
-    vector<Queue> queues;
     for (int i = 0; i < queueAmount; i++) {
         Queue q;
         ss >> q.QID >> q.timeSlice >> q.schedulingPolicy;
         queues.push_back(q);
     }
 
-    vector<Process> processes;
     Process p;
 
-    while (ss >> p.PID >> p.arrivalTime >> p.burstTime >> p.queueID) {
+    while (ss >> p.PID >> p.arrivalTime >> p.burstTime >> p.QueueID) {
         p.remainingTime = p.burstTime;
         processes.push_back(p);
     }
+}
 
+void printProcessTable(vector<Queue>& queues, vector<Process>& processes){
     cout << left << setw(20) << " ";
     for (const auto& process : processes) cout << setw(15) << process.PID;
     cout << endl;
@@ -187,13 +209,13 @@ void readFileContent(string file) {
     cout << endl;
 
     cout << left << setw(20) << "Queue ID";
-    for (const auto& process : processes) cout << setw(15) << process.queueID;
+    for (const auto& process : processes) cout << setw(15) << process.QueueID;
     cout << endl;
 
     cout << left << setw(20) << "Time slice";
     for (const auto& process : processes) {
         int slice = 0;
-        for (const auto& q : queues) if (q.QID == process.queueID) slice = q.timeSlice;
+        for (const auto& q : queues) if (q.QID == process.QueueID) slice = q.timeSlice;
         cout << setw(15) << slice;
     }
     cout << endl;
@@ -201,7 +223,7 @@ void readFileContent(string file) {
     cout << left << setw(20) << "Algorithm";
     for (const auto& process : processes) {
         string algorithm = "";
-        for (const auto& q : queues) if (q.QID == process.queueID) algorithm = q.schedulingPolicy;
+        for (const auto& q : queues) if (q.QID == process.QueueID) algorithm = q.schedulingPolicy;
         cout << setw(15) << algorithm;
     }
 }
@@ -217,7 +239,11 @@ void fileInfo(HANDLE usb, const bootSector& bs, const ENTRY& file) {
     if (content.empty()) {
         cout << "File is empty\n";
     }
-    readFileContent(content);
+
+    vector<Queue> queues;
+    vector<Process> processes;
+    readFileContent(content, queues, processes);
+    printProcessTable(queues, processes);
 }
 
 int handleChoice(sf::RenderWindow& window, sf::Font& font, const vector<string>& choices) {
@@ -245,10 +271,17 @@ int handleChoice(sf::RenderWindow& window, sf::Font& font, const vector<string>&
         window.clear(sf::Color::Black);
 
         for (int i = 0; i < n; i++) {
-            sf::Text text(font, (i == choice ? ">> " : "   ") + choices[i], 24);
+            sf::Text text(font);
+            text.setCharacterSize(24);
             text.setPosition({50.f, 50.f + i * 40.f});
-            text.setFillColor(i == choice ? sf::Color::Yellow : sf::Color::White);
-            window.draw(text);
+
+            if(i == choice){
+                text.setString(">>" + choices[i]);
+                text.setFillColor(sf::Color::Blue);
+            } else{
+                text.setString(" " + choices[i]);
+                text.setFillColor(sf::Color::White);
+            }
         }
 
         window.display();
@@ -258,36 +291,43 @@ int handleChoice(sf::RenderWindow& window, sf::Font& font, const vector<string>&
 }
 
 
-void CPUScheduling(sf::RenderWindow& window, sf::Font& font, const string& path){
+void CPUScheduling(sf::RenderWindow& window, sf::Font& font, HANDLE usb, const bootSector& bs, const ENTRY& file){
     vector<Queue> queues;
     vector<Process> processes;
     vector<Gantt> gantt;
 
-    readFile(path, queues, processes);
+    string content = fileContent(usb, bs, file);
+    readFileContent(content, queues, processes);
     runQueue(processes, queues, gantt);
+    printProcessStatistic(processes);
 
+    //Tính tổng thời gian chạy
     int runningTime = 1;
-    if (!gantt.empty()) {
-        runningTime = gantt.back().end;
+    for (int i = 0; i < gantt.size(); i++) {
+        if (gantt[i].end > runningTime) {
+            runningTime = gantt[i].end;
+        }
     }
-
+    // Tạo mảng chứa queue id
     vector<string> qid;
     for(int i = 0; i < queues.size(); i++){
         qid.push_back(queues[i].QID);
     }
 
-    float left        = 120.f;
-    float top         = 80.f;
-    float rHeight     = 60.f;
-    float chartWidth  = 650.f;
+    float leftEdge = 30.f;
+    float top = 80.f;
+    float rHeight = 60.f;
+    float chartWidth = 750.f;
     float blockHeight = 40.f;
 
     while(window.isOpen()){
         while(const auto event = window.pollEvent()){
+            //Nhấn dấu x thì tắt luôn console
             if(event->is<sf::Event::Closed>()){
                 window.close();
                 return;
             }
+            //Nhấn Esc để quay về menu
             if (const auto* key = event->getIf<sf::Event::KeyPressed>()){
                 if(key->code == sf::Keyboard::Key::Escape){
                     return;
@@ -295,45 +335,53 @@ void CPUScheduling(sf::RenderWindow& window, sf::Font& font, const string& path)
             }
         }
 
-        window.clear(sf::Color(30,30,30));
+        window.clear(sf::Color::Black);
 
+        //Duyệt qua từng hàng đợi
         for(int j = 0; j < qid.size(); j++){
             float row = top + j * rHeight;
 
-            sf::Text qLabel(font, qid[j], 16);
-            qLabel.setPosition({10.f, row + 10.f});
-            qLabel.setFillColor(sf::Color::White);
-            window.draw(qLabel);
+            //Vẽ tên hàng đợi 
+            sf::Text queueName(font, qid[j], 16);
+            queueName.setPosition({10.f, row + 10.f});
+            queueName.setFillColor(sf::Color::White);
+            window.draw(queueName);
 
             for (int z = 0; z < gantt.size(); z++) {
-                if (gantt[z].queueID != qid[j]) continue;
-
+                //Nếu khối không thuộc hàng đợi thì bỏ qua
+                if (gantt[z].queueID != qid[j]) {
+                    continue;
+                }
                 float scale = chartWidth / runningTime;
-                float x = left + gantt[z].start * scale;
-                float w = (gantt[z].end - gantt[z].start) * scale;
+                float x = leftEdge + gantt[z].start * scale;
+                float width = (gantt[z].end - gantt[z].start) * scale;
 
-                sf::RectangleShape rect({w - 2.f, blockHeight});
+                //Vẽ khối chữ nhật
+                sf::RectangleShape rect({width - 2.f, blockHeight});
                 rect.setPosition({x + 1.f, row});
                 rect.setFillColor(sf::Color(70, 130, 180));
                 rect.setOutlineColor(sf::Color::White);
                 rect.setOutlineThickness(1.f);
                 window.draw(rect);
-
+                
+                //Vẽ tên process vào khối rectangle
                 sf::Text pid(font, gantt[z].PID, 13);
                 pid.setPosition({x + 4.f, row + 12.f});
                 pid.setFillColor(sf::Color::White);
                 window.draw(pid);
 
+                //Vẽ mốc thời gian chạy và kết thúc của khối
                 sf::Text tStart(font, to_string(gantt[z].start), 11);
                 tStart.setPosition({x, row + blockHeight + 4.f});
                 tStart.setFillColor(sf::Color(200, 200, 200));
                 window.draw(tStart);
             }
 
+            //Ghi mốc thời gian kết thúc cho mốc cuối cùng
             for (int z = gantt.size() - 1; z >= 0; z--) {
                 if (gantt[z].queueID == qid[j]) {
                     float scale = chartWidth / runningTime;
-                    float x = left + gantt[z].end * scale;
+                    float x = leftEdge + gantt[z].end * scale;
                     sf::Text tEnd(font, to_string(gantt[z].end), 11);
                     tEnd.setPosition({x, row + blockHeight + 4.f});
                     tEnd.setFillColor(sf::Color(200, 200, 200));
@@ -344,6 +392,48 @@ void CPUScheduling(sf::RenderWindow& window, sf::Font& font, const string& path)
         }
 
         window.display();  
+    }
+}
+
+void printProcessStatistic(sf::RenderWindow& window, sf::Font& font, const vector<Process>& processes){
+    stringstream ss;
+    ss << "\n================ PROCESS STATISTICS ================\n";
+    ss << left << setw(12) << "\nProcess" << setw(12) << "Arrival" << setw(10) << "Burst" << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << '\n';
+    ss << "---------------------------------------------------------------------------------\n";
+
+    double averageTurnaroundTime = 0.0;
+    double averageWaitingTime = 0.0;
+    for (int i = 0; i < processes.size(); i++) {
+        const Process& p = processes[i];
+        averageTurnaroundTime += p.turnaroundTime;
+        averageWaitingTime += p.waitingTime;
+
+        ss << left << setw(12) << p.PID << setw(12) << p.arrivalTime << setw(13) << p.burstTime << setw(15) << p.completionTime << setw(13) << p.turnaroundTime << setw(10) << p.waitingTime << '\n';
+    }
+    ss << "---------------------------------------------------------------------------------\n";
+    ss << "\nAverage Turnaround Time : " << averageTurnaroundTime / processes.size();
+    ss << "\nAverage Waiting Time : " << averageWaitingTime / processes.size() << '\n';
+    ss << "\n============================================================\n";
+
+    sf::Text text(font, ss.str(), 18);
+    text.setPosition({30.f, 30.f});
+
+    while (window.isOpen()) {
+        while (const auto event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
+                window.close();
+                return;
+            }
+            if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+                if (key->code == sf::Keyboard::Key::Escape || key->code == sf::Keyboard::Key::Enter) {
+                    return; 
+                }
+            }
+        }
+
+        window.clear(sf::Color::Black);
+        window.draw(text);
+        window.display();
     }
 }
     

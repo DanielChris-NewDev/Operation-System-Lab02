@@ -10,10 +10,8 @@ int main(){
 
     vector<string> menu = {
         "1. Boot sector information.",
-        "2. Search .txt files",
-        "3. View .txt file information",
-        "4. CPU Scheduling diagram",
-        "5. Exit."
+        "2. Search and handle files",
+        "3. Exit."
     };
 
     while (window.isOpen()) {
@@ -21,12 +19,19 @@ int main(){
 
         switch (choice) {
             case 0:
-                bootSector Bs;
-                printBootSectorInfo(Bs);
+            {
+                bootSector Bs = readBootSector("\\\\.\\E:");
+                printBootSectorInfo(window, font, Bs);
                 break;
-            case 1: txtFiles = searchFiles(usb, Bs, Bs.FAT32.rootCluster);
+            }
+            case 1: {
+                HANDLE usb = CreateFile("\\\\.\\E:", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                bootSector Bs = readBootSector("\\\\.\\E:");
+                txtFiles = searchFiles(usb, Bs, Bs.FAT32.rootCluster);
+
                 if (txtFiles.empty()) {
                     cout << "No .txt files found in the Root Directory." << endl;
+                    break;
                 }
                 else {
                     cout << ".txt files founded\n";
@@ -34,19 +39,30 @@ int main(){
                         cout << i + 1 << ". " << txtFiles[i].name << ".txt " << '\n';
                     }
                 }
-                cout << '\n';
-                break;
-            case 2: int choose;
+                
+                int choose;
                 cout << "Choose file\n";
                 cin >> choose;
+
                 if (choose > txtFiles.size()) cout << "Invalid number\n";
+
                 fileInfo(usb, Bs, txtFiles[choose - 1]);
-                break;
-            case 3:
-                while (const auto event = window.pollEvent()) {}
-                CPUScheduling(window, font, "input.txt");
-                break;
-            case 4:
+                char answer;
+                cout << "\nDo you want to draw the CPU scheduling diagram for this file's content? (y/n): ";
+                cin >> answer;
+
+                if(answer == 'y' || answer == 'Y'){
+                    while (const auto event = window.pollEvent()) {};
+                    CPUScheduling(window, font, usb, Bs, txtFiles[choose - 1]);
+
+                } else if (answer == 'n' || answer == 'N'){
+                    cout << "Returning to menu\n";
+                } else {
+                    cout << "Invalid choice\n";
+                }
+            }
+
+            case 2:
             case -1:
                 window.close();
                 return 0;
