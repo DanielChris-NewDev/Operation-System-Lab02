@@ -6,11 +6,12 @@ int main(){
 
     sf::Font font;
     if (!font.openFromFile("C:/Windows/Fonts/arial.ttf")) return -1;
+    vector<ENTRY> txtFiles;
 
     vector<string> menu = {
         "1. Boot sector information.",
-        "2. ",
-        "3. ",
+        "2. Search .txt files",
+        "3. View .txt file information",
         "4. CPU Scheduling diagram",
         "5. Exit."
     };
@@ -23,8 +24,24 @@ int main(){
                 bootSector Bs;
                 printBootSectorInfo(Bs);
                 break;
-            case 1: break;
-            case 2: break;
+            case 1: txtFiles = searchFiles(usb, Bs, Bs.FAT32.rootCluster);
+                if (txtFiles.empty()) {
+                    cout << "No .txt files found in the Root Directory." << endl;
+                }
+                else {
+                    cout << ".txt files founded\n";
+                    for (int i = 0; i < txtFiles.size(); i++) {
+                        cout << i + 1 << ". " << txtFiles[i].name << ".txt " << '\n';
+                    }
+                }
+                cout << '\n';
+                break;
+            case 2: int choose;
+                cout << "Choose file\n";
+                cin >> choose;
+                if (choose > txtFiles.size()) cout << "Invalid number\n";
+                fileInfo(usb, Bs, txtFiles[choose - 1]);
+                break;
             case 3:
                 while (const auto event = window.pollEvent()) {}
                 CPUScheduling(window, font, "input.txt");
