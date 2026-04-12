@@ -6,8 +6,36 @@ int main(){
 
     sf::Font font;
     if (!font.openFromFile("C:/Windows/Fonts/arial.ttf")) return -1;
-    vector<ENTRY> txtFiles;
+    string driveLetter = "";
+    bool driveSelected = false;
 
+    while (window.isOpen() && !driveSelected) {
+        while (const std::optional event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
+                window.close();
+            }
+            else if (const auto* textEntered = event->getIf<sf::Event::TextEntered>()) {
+                char c = static_cast<char>(textEntered->unicode);
+                
+                if (std::isalpha(c)) {
+                    driveLetter = c;
+                }
+                else if (c == '\r' || c == '\n') {
+                    if (!driveLetter.empty()) driveSelected = true;
+                }
+            }
+        }
+
+        window.clear();
+        sf::Text prompt(font, "Enter USB Drive Letter: " + driveLetter, 30);
+        prompt.setPosition({100, 250});
+        window.draw(prompt);
+        window.display();
+    }
+
+    string drivePath = "\\\\.\\" + driveLetter + ":";
+    
+    vector<ENTRY> txtFiles;
     vector<string> menu = {
         "1. Boot sector information.",
         "2. Search and handle files",
@@ -20,45 +48,40 @@ int main(){
         switch (choice) {
             case 0:
             {
-                bootSector Bs = readBootSector("\\\\.\\E:");
+                bootSector Bs = readBootSector(drivePath.c_str());
                 printBootSectorInfo(window, font, Bs);
                 break;
             }
             case 1: {
-                HANDLE usb = CreateFile("\\\\.\\E:", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-                bootSector Bs = readBootSector("\\\\.\\E:");
+                HANDLE usb = CreateFile(drivePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                bootSector Bs = readBootSector(drivePath.c_str());
                 txtFiles = searchFiles(usb, Bs, Bs.FAT32.rootCluster);
 
                 if (txtFiles.empty()) {
-                    cout << "No .txt files found in the Root Directory." << endl;
+                    vector<string> errorMsg = { "No .txt files found" };
+                    handleChoice(window, font, errorMsg);
                     break;
                 }
                 else {
-                    cout << ".txt files founded\n";
+                    vector<string> fileNames;
                     for (int i = 0; i < txtFiles.size(); i++) {
-                        cout << i + 1 << ". " << txtFiles[i].name << ".txt " << '\n';
+                        string entry = std::to_string(i + 1) + ". " + txtFiles[i].name + ".txt";
+                        fileNames.push_back(entry);
                     }
-                }
-                
-                int choose;
-                cout << "Choose file\n";
-                cin >> choose;
 
-                if (choose > txtFiles.size()) cout << "Invalid number\n";
+                    int fileChoice = handleChoice(window, font, fileNames);
 
-                fileInfo(usb, Bs, txtFiles[choose - 1]);
-                char answer;
-                cout << "\nDo you want to draw the CPU scheduling diagram for this file's content? (y/n): ";
-                cin >> answer;
+                    if (fileChoice != -1) { 
+                        fileInfo(window, font, usb, Bs, txtFiles[fileChoice]);
 
-                if(answer == 'y' || answer == 'Y'){
-                    while (const auto event = window.pollEvent()) {};
-                    CPUScheduling(window, font, usb, Bs, txtFiles[choose - 1]);
+                        vector<string> yesNo = { "Do you want to print CPU diagram?", "Yes", "No" };
+                        int drawChoice = handleChoice(window, font, yesNo);
 
-                } else if (answer == 'n' || answer == 'N'){
-                    cout << "Returning to menu\n";
-                } else {
-                    cout << "Invalid choice\n";
+                        if (drawChoice == 1) {
+                            CPUScheduling(window, font, usb, Bs, txtFiles[fileChoice]);
+                        }
+                    }
+                    break;
                 }
             }
 

@@ -168,7 +168,6 @@ string fileContent(HANDLE usb, const bootSector& bs, const ENTRY& file) {
     DWORD bytes_read; // các byte đã đọc
 
     if (!ReadFile(usb, buffer, 512, &bytes_read, NULL)) { //bắt đầu từ phần tử/chữ đầu tiên trong file
-        cout << "Unable to read file's information\n";
         return "";
     }
 
@@ -195,55 +194,75 @@ void readFileContent(string file, vector<Queue>& queues, vector<Process>& proces
     }
 }
 
-void printProcessTable(vector<Queue>& queues, vector<Process>& processes){
-    cout << left << setw(20) << " ";
-    for (const auto& process : processes) cout << setw(15) << process.PID;
-    cout << endl;
+string getProcessTable(vector<Queue>& queues, vector<Process>& processes) {
+    stringstream ss;
+    ss << left << setw(12) << "Process" << " | ";
+    for (const auto& p : processes) ss << setw(20) << p.PID;
+    ss << "\n" << string(100, '-') << "\n";
 
-    cout << left << setw(20) << "Arrival time";
-    for (const auto& process : processes) cout << setw(15) << process.arrivalTime;
-    cout << endl;
+    ss << left << setw(16) << "Arrival" << " | ";
+    for (const auto& p : processes) ss << setw(22) << p.arrivalTime;
+    ss << "\n";
 
-    cout << left << setw(20) << "Burst time";
-    for (const auto& process : processes) cout << setw(15) << process.burstTime;
-    cout << endl;
+    ss << left << setw(16) << "Burst" << " | ";
+    for (const auto& p : processes) ss << setw(22) << p.burstTime;
+    ss << "\n";
 
-    cout << left << setw(20) << "Queue ID";
-    for (const auto& process : processes) cout << setw(15) << process.QueueID;
-    cout << endl;
+    ss << left << setw(12) << "Queue ID" << " | ";
+    for (const auto& p : processes) ss << setw(20) << p.QueueID;
+    ss << "\n";
 
-    cout << left << setw(20) << "Time slice";
+    ss << left << setw(12) << "Algorithm" << " | ";
     for (const auto& process : processes) {
-        int slice = 0;
-        for (const auto& q : queues) if (q.QID == process.QueueID) slice = q.timeSlice;
-        cout << setw(15) << slice;
+        string alg = "N/A";
+        for (const auto& q : queues) if (q.QID == process.QueueID) alg = q.schedulingPolicy;
+        ss << setw(16) << alg;
     }
-    cout << endl;
-
-    cout << left << setw(20) << "Algorithm";
-    for (const auto& process : processes) {
-        string algorithm = "";
-        for (const auto& q : queues) if (q.QID == process.QueueID) algorithm = q.schedulingPolicy;
-        cout << setw(15) << algorithm;
-    }
+    return ss.str();
 }
 
-void fileInfo(HANDLE usb, const bootSector& bs, const ENTRY& file) {
+void fileInfo(sf::RenderWindow& window, sf::Font& font, HANDLE usb, const bootSector& bs, const ENTRY& file) {
+    stringstream ss;
+    ss << "================ FILE INFORMATION ================\n";
+    ss << "File name:     " << file.name << ".txt" << '\n'
+       << "Date created:  " << file.dateCreated << '\n'
+       << "Time created:  " << file.timeCreated << '\n'
+       << "Size:          " << file.fileSize << " Bytes" << '\n';
+    ss << "==================================================\n\n";
+    ss << "== Process Information Table ==\n";
 
-    cout << "File name: " << file.name << ".txt" << '\n'
-        << "Date created: " << file.dateCreated << '\n'
-        << "Time created: " << file.timeCreated << '\n'
-        << "Size: " << file.fileSize << " Bytes" << '\n';
-    cout << "== Process Information Table ==\n";
     string content = fileContent(usb, bs, file);
     if (content.empty()) {
-        cout << "File is empty\n";
-    }
+        ss << "[File is empty or could not be read]\n";
+    } else {
+        vector<Queue> queues;
+        vector<Process> processes;
+        readFileContent(content, queues, processes);
 
-    vector<Queue> queues;
-    vector<Process> processes;
-    readFileContent(content, queues, processes);
-    printProcessTable(queues, processes);
+        ss << getProcessTable(queues, processes);
+    }
+    
+    ss << "\n\nPress Enter or Esc to continue...";
+
+    sf::Text text(font, ss.str(), 16);
+    text.setPosition({30.f, 30.f});
+
+    while (window.isOpen()) {
+        while (const auto event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
+                window.close();
+                return;
+            }
+            if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+                if (key->code == sf::Keyboard::Key::Escape || key->code == sf::Keyboard::Key::Enter) {
+                    return; 
+                }
+            }
+        }
+        window.clear(sf::Color::Black);
+        window.draw(text);
+        window.display();
+    }
 }
 
 int handleChoice(sf::RenderWindow& window, sf::Font& font, const vector<string>& choices) {
@@ -282,6 +301,8 @@ int handleChoice(sf::RenderWindow& window, sf::Font& font, const vector<string>&
                 text.setString(" " + choices[i]);
                 text.setFillColor(sf::Color::White);
             }
+
+            window.draw(text);
         }
 
         window.display();
