@@ -299,7 +299,7 @@ void CPUScheduling(sf::RenderWindow& window, sf::Font& font, HANDLE usb, const b
     string content = fileContent(usb, bs, file);
     readFileContent(content, queues, processes);
     runQueue(processes, queues, gantt);
-    printProcessStatistic(processes);
+    printProcessStatistic(window, font, processes);
 
     //Tính tổng thời gian chạy
     int runningTime = 1;
